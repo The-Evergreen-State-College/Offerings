@@ -1,0 +1,15 @@
+# Directories
+/Data/
+
+
+#All Files
+cache/*
+Logs/*
+
+# File
+var_*
+*.backup
+*Test.cmd
+*Dev*
+*.old
+test*.cmd
