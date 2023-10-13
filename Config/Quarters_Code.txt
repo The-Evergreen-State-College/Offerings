@@ -1,0 +1,4 @@
+Fall=10
+Winter=20
+Spring=30
+Summer=40

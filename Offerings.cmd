@@ -3,8 +3,8 @@
 ::#############################################################################
 ::							#DESCRIPTION#
 ::
-::	SCRIPT STYLE: 
-::	Program is 
+::	
+::	
 ::#############################################################################
 
 :::: Developer ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -14,7 +14,7 @@
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 :::: GitHub :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-::	https://github.com/DavidGeeraerts/
+::	https://github.com/The-Evergreen-State-College/Offerings
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 :::: License ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -35,8 +35,8 @@
 @Echo Off
 @SETLOCAL enableextensions
 SET $PROGRAM_NAME=Offerings-Parsing-Tool
-SET $Version=0.1.0
-SET $BUILD=2023-10-10 1430
+SET $Version=0.2.0
+SET $BUILD=2023-10-12 0700
 Title %$PROGRAM_NAME%
 Prompt OPT$G
 color 8F
@@ -60,7 +60,8 @@ SET $LOG_FILE=Offerings.log
 
 :: Adminweb Web URI to fetch export
 SET "$URI_ADMINWEB=https://adminweb.evergreen.edu/banner/public/offerings/export"
-
+::	Adminweb xml export file
+SET $ADMINWEB_OFFERINGS_EXPORT_FILE=adminweb_Offering_export.xml
 
 :: XMLStarlet Tool
 ::	https://xmlstar.sourceforge.net/
@@ -145,64 +146,114 @@ SET /P $TIMEZONE_UTC= < ".\cache\var_timezone_UTC.txt"
 :: Check for XMLStartlet
 xml --version > .\cache\xmlstartlet-version.txt
 SET $ERROR_XML=%ERRORLEVEL%
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-
-wget --no-check-certificate "https://adminweb.evergreen.edu/banner/public/offerings/export" --output-document=.\Data\adminweb_Offering_export.xml
+:: Retrieve XML feed
+wget --tries=2 --connect-timeout=10 --waitretry=5 --no-check-certificate "https://adminweb.evergreen.edu/banner/public/offerings/export" --output-document=.\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE%
 SET $ERROR_WGET=%ERRORLEVEL%
-echo %$ERROR_WGET%
-IF %$ERROR_WGET% NEQ 0 timeout /t 60
-
+echo Retrieve offerings XML file error: %$ERROR_WGET%
+IF %$ERROR_WGET% NEQ 0 (
+	@powershell Write-Host "Failed to retrieve latest xml, information may not be up to date!" -ForegroundColor DarkRed
+	timeout /t 10
+	FIND "offerings" ".\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE%" 2>nul 1> nul || GoTo Exit
+	)
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 :: Get Count of offerings in export
-xml.exe sel -t -v "count(/offerings/offering/title)" .\Data\adminweb_Offering_export.xml > .\cache\offerings_count.txt
+xml.exe sel -t -v "count(/offerings/offering/title)" .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE% > .\cache\offerings_count.txt
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
+:: Fall back for some config files
+::	Asumes Quarters are a constant
+IF EXIST ".\Config\Quarters.txt" GoTo skipQ
+echo Fall> ".\Config\Quarters.txt"
+echo Winter>> ".\Config\Quarters.txt"
+echo Spring>> ".\Config\Quarters.txt"
+echo Summer>> ".\Config\Quarters.txt"
+:skipQ
+:: Assumes term codes are constant
+IF EXIST ".\Config\Quarters_Code.txt" GoTo skipQCFB
+echo Fall=10> ".\Config\Quarters_Code.txt"
+echo Winter=20>> ".\Config\Quarters_Code.txt"
+echo Spring=30>> ".\Config\Quarters_Code.txt"
+echo Summer=40>> ".\Config\Quarters_Code.txt"
+:skipQCFB
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 :: Get Year
-xml sel -T -t -m //offering[@status='Confirmed'] -s A:N:U @year -v @year  -n .\Data\adminweb_Offering_export.xml > .\cache\offerings_year.txt
+xml sel -T -t -m //offering[@status='Confirmed'] -s A:N:U @year -v @year  -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE% > .\cache\offerings_year.txt
 SET /P $OFFERING_YEAR= < .\cache\offerings_year.txt
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 :: Get Cancelled Offerings
-xml sel -t -m //offering[@status='Cancelled'] -v "concat(@id, '|', @status, '|', title)" -n .\Data\adminweb_Offering_export.xml > .\Data\%$OFFERING_YEAR%-Offerings-Cancelled.txt
+xml sel -t -m //offering[@status='Cancelled'] -v "concat(@id, '|', @status, '|', title)" -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE% > .\Data\%$OFFERING_YEAR%-Offerings-Cancelled.txt
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+:: Get unfiltered list of offerings
+::	Complete
+xml sel -t -m //offering[@status='Confirmed'] -s A:T:U title -v "concat(title, '|', @offering_type, '|', @curr_area, '|', @liaison_area, '|', faculties/faculty[1]/@display_name, ';', faculties/faculty[2]/@display_name, ';', faculties/faculty[3]/@display_name)" -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE%> .\Data\Complete-Offerings-Listing-Confirmed.txt
+:: Fall, Complete, Confirmed
+xml sel -t -m //offering[@status='Confirmed'] -s A:T:U title --if "terms/term[@code='%$OFFERING_YEAR%10']" -v "concat(title, '|', @offering_type, '|', @curr_area, '|', @liaison_area, '|', faculties/faculty[1]/@display_name, ';', faculties/faculty[2]/@display_name, ';', faculties/faculty[3]/@display_name)" -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE%> .\Data\%$OFFERING_YEAR%-Offerings-Fall-Confirmed-Listing.txt
+:: Winter, Complete, Confirmed
+xml sel -t -m //offering[@status='Confirmed'] -s A:T:U title --if "terms/term[@code='%$OFFERING_YEAR%20']" -v "concat(title, '|', @offering_type, '|', @curr_area, '|', @liaison_area, '|', faculties/faculty[1]/@display_name, ';', faculties/faculty[2]/@display_name, ';', faculties/faculty[3]/@display_name)" -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE%> .\Data\%$OFFERING_YEAR%-Offerings-Winter-Confirmed-Listing.txt
+:: Spring, Complete, Confirmed
+xml sel -t -m //offering[@status='Confirmed'] -s A:T:U title --if "terms/term[@code='%$OFFERING_YEAR%30']" -v "concat(title, '|', @offering_type, '|', @curr_area, '|', @liaison_area, '|', faculties/faculty[1]/@display_name, ';', faculties/faculty[2]/@display_name, ';', faculties/faculty[3]/@display_name)" -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE%> .\Data\%$OFFERING_YEAR%-Offerings-Spring-Confirmed-Listing.txt
+:: Summer, Complete, Confirmed
+xml sel -t -m //offering[@status='Confirmed'] -s A:T:U title --if "terms/term[@code='%$OFFERING_YEAR%40']" -v "concat(title, '|', @offering_type, '|', @curr_area, '|', @liaison_area, '|', faculties/faculty[1]/@display_name, ';', faculties/faculty[2]/@display_name, ';', faculties/faculty[3]/@display_name)" -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE%> .\Data\%$OFFERING_YEAR%-Offerings-Summer-Confirmed-Listing.txt
 
 :: Get Offerings by Liaison_area
-xml sel -t -m //offering[@status='Confirmed'] -s A:T:U @liaison_area -v "concat(@liaison_area, '|', @id, '|', title)" -n .\Data\adminweb_Offering_export.xml > .\Data\%$OFFERING_YEAR%-Offerings_by_liaison_area.txt
-
+xml sel -t -m //offering[@status='Confirmed'] -s A:T:U @liaison_area -v "concat(@liaison_area, '|', @id, '|', title)" -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE% > .\Data\%$OFFERING_YEAR%-Complete-Offerings_by_liaison_area.txt
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 :: Get Offerings that are Confirmed build index
-::xml sel -t -c //offering[@status='Confirmed'] -m offerings/offering/oars_offerings/oars_offering -v @code -o "|" -m "//offering" -v "concat(@id, '|' ,@status, '|', @year, '|', @offering_type, '|', @liaison_area, '|', @curr_area, '|', title)" -o "|" -m "faculties/faculty" -v "@display_name" -n .\Data\adminweb_Offering_export.xml > .\Data\Offerings_Parsed.txt
+::xml sel -t -c //offering[@status='Confirmed'] -m offerings/offering/oars_offerings/oars_offering -v @code -o "|" -m "//offering" -v "concat(@id, '|' ,@status, '|', @year, '|', @offering_type, '|', @liaison_area, '|', @curr_area, '|', title)" -o "|" -m "faculties/faculty" -v "@display_name" -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE% > .\Data\Offerings_Parsed.txt
+
+:: Future code, but not working
+::	in order for this work, it would have to call a function that takes parameters {quarter, quarter_code}.
+:: SET would need to be outside the FOR loop to work properly
+::IF "%1"=="Fall" SET $TERM_CODE=10
+::IF "%1"=="Winter" SET $TERM_CODE=20
+::IF "%1"=="Spring" SET $TERM_CODE=30
+::IF "%1"=="Summer" SET $TERM_CODE=40
+::FOR /F "tokens=1 delims=" %%P IN (.\Config\Quarters.txt) DO (
+::xml sel -T -t -m //offering[@status='Confirmed'][@liaison_area!='TAC'][@liaison_area!='CON'][@liaison_area!='CTL'][@liaison_area!='EA'][@liaison_area!='MPA'][@liaison_area!='CCP'][@liaison_area!='NP'][@offering_type!='Research'] --if "terms/term[@code='%$OFFERING_YEAR%%$TERM_CODE%']" -v @id -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE% > ".\Data\index\%$OFFERING_YEAR%-%%P-ID-Index.txt")
+
 :: Fall
-xml sel -T -t -m //offering[@status='Confirmed'][@liaison_area!='TAC'][@liaison_area!='CON'][@liaison_area!='CTL'][@liaison_area!='EA'][@liaison_area!='MPA'][@liaison_area!='CCP'][@liaison_area!='NP'][@offering_type!='Research'] --if "terms/term[@code='%$OFFERING_YEAR%10']" -v @id -n .\Data\adminweb_Offering_export.xml > ".\Data\index\%$OFFERING_YEAR%-Fall-ID-Index.txt"
+xml sel -T -t -m //offering[@status='Confirmed'][@liaison_area!='TAC'][@liaison_area!='CON'][@liaison_area!='CTL'][@liaison_area!='EA'][@liaison_area!='MIT'][@liaison_area!='MPA'][@liaison_area!='CCP'][@liaison_area!='NP'][@offering_type!='Research'] --if "terms/term[@code='%$OFFERING_YEAR%10']" -v @id -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE% > ".\Data\index\%$OFFERING_YEAR%-Fall-ID-Index.txt"
 
 :: Winter
-xml sel -T -t -m //offering[@status='Confirmed'][@liaison_area!='TAC'][@liaison_area!='CON'][@liaison_area!='CTL'][@liaison_area!='EA'][@liaison_area!='MPA'][@liaison_area!='CCP'][@liaison_area!='NP'][@offering_type!='Research'] --if "terms/term[@code='%$OFFERING_YEAR%20']" -v @id -n .\Data\adminweb_Offering_export.xml > ".\Data\index\%$OFFERING_YEAR%-Winter-ID-Index.txt"
+xml sel -T -t -m //offering[@status='Confirmed'][@liaison_area!='TAC'][@liaison_area!='CON'][@liaison_area!='CTL'][@liaison_area!='EA'][@liaison_area!='MIT'][@liaison_area!='MPA'][@liaison_area!='CCP'][@liaison_area!='NP'][@offering_type!='Research'] --if "terms/term[@code='%$OFFERING_YEAR%20']" -v @id -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE% > ".\Data\index\%$OFFERING_YEAR%-Winter-ID-Index.txt"
 
 :: Spring
-xml sel -T -t -m //offering[@status='Confirmed'][@liaison_area!='TAC'][@liaison_area!='CON'][@liaison_area!='CTL'][@liaison_area!='EA'][@liaison_area!='MPA'][@liaison_area!='CCP'][@liaison_area!='NP'][@offering_type!='Research'] --if "terms/term[@code='%$OFFERING_YEAR%30']" -v @id -n .\Data\adminweb_Offering_export.xml > ".\Data\index\%$OFFERING_YEAR%-Spring-ID-Index.txt"
+xml sel -T -t -m //offering[@status='Confirmed'][@liaison_area!='TAC'][@liaison_area!='CON'][@liaison_area!='CTL'][@liaison_area!='EA'][@liaison_area!='MIT'][@liaison_area!='MPA'][@liaison_area!='CCP'][@liaison_area!='NP'][@offering_type!='Research'] --if "terms/term[@code='%$OFFERING_YEAR%30']" -v @id -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE% > ".\Data\index\%$OFFERING_YEAR%-Spring-ID-Index.txt"
 
 :: Summer
-xml sel -T -t -m //offering[@status='Confirmed'][@liaison_area!='TAC'][@liaison_area!='CON'][@liaison_area!='CTL'][@liaison_area!='EA'][@liaison_area!='MPA'][@liaison_area!='CCP'][@liaison_area!='NP'][@offering_type!='Research'] --if "terms/term[@code='%$OFFERING_YEAR%40']" -v @id -n .\Data\adminweb_Offering_export.xml > ".\Data\index\%$OFFERING_YEAR%-Summer-ID-Index.txt"
+xml sel -T -t -m //offering[@status='Confirmed'][@liaison_area!='TAC'][@liaison_area!='CON'][@liaison_area!='CTL'][@liaison_area!='EA'][@liaison_area!='MIT'][@liaison_area!='MPA'][@liaison_area!='CCP'][@liaison_area!='NP'][@offering_type!='Research'] --if "terms/term[@code='%$OFFERING_YEAR%40']" -v @id -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE% > ".\Data\index\%$OFFERING_YEAR%-Summer-ID-Index.txt"
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-
-
+:: Using Quarter index on Id's, parse xml for offerings by Quarter 
 :: Fall
-IF EXIST "%$OFFERING_YEAR%-Fall-Offerings-Parsed.txt" DEL /F /Q "%$OFFERING_YEAR%-Fall-Offerings-Parsed.txt"
+IF EXIST ".\Data\%$OFFERING_YEAR%-Fall-Offerings-Parsed.txt" DEL /F /Q ".\Data\%$OFFERING_YEAR%-Fall-Offerings-Parsed.txt"
 FOR /F "tokens=1 delims=" %%P IN (.\Data\index\%$OFFERING_YEAR%-Fall-ID-Index.txt) DO (
-xml sel -T -t -m offerings/offering[@id='%%P'] -v "concat(@id, '|', title)" -o "|" -if "oars_offerings/oars_offering" -v oars_offerings/oars_offering/@code -n --else -o "" -n .\Data\adminweb_Offering_export.xml >> .\Data\%$OFFERING_YEAR%-Fall-Offerings-Parsed.txt)
+xml sel -T -t -m offerings/offering[@id='%%P'] -v "concat(@id, '|', @curr_area, '|', @liaison_area, '|', title)" -o "|" -if "oars_offerings/oars_offering" -v oars_offerings/oars_offering/@code -n --else -o "" -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE% >> .\Data\%$OFFERING_YEAR%-Fall-Offerings-Parsed.txt)
 
 :: Winter
-IF EXIST "%$OFFERING_YEAR%-Winter-Offerings-Parsed.txt" DEL /F /Q "%$OFFERING_YEAR%-Winter-Offerings-Parsed.txt"
+IF EXIST ".\Data\%$OFFERING_YEAR%-Winter-Offerings-Parsed.txt" DEL /F /Q ".\Data\%$OFFERING_YEAR%-Winter-Offerings-Parsed.txt"
 FOR /F "tokens=1 delims=" %%P IN (.\Data\index\%$OFFERING_YEAR%-Winter-ID-Index.txt) DO (
-xml sel -T -t -m offerings/offering[@id='%%P'] -v "concat(@id, '|', title)" -o "|" -if "oars_offerings/oars_offering" -v oars_offerings/oars_offering/@code -n --else -o "" -n .\Data\adminweb_Offering_export.xml >> .\Data\%$OFFERING_YEAR%-Winter-Offerings-Parsed.txt)
+xml sel -T -t -m offerings/offering[@id='%%P'] -v "concat(@id, '|', title)" -o "|" -if "oars_offerings/oars_offering" -v oars_offerings/oars_offering/@code -n --else -o "" -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE% >> .\Data\%$OFFERING_YEAR%-Winter-Offerings-Parsed.txt)
 
 :: Spring
-IF EXIST "%$OFFERING_YEAR%-Spring-Offerings-Parsed.txt" DEL /F /Q "%$OFFERING_YEAR%-Spring-Offerings-Parsed.txt"
+IF EXIST ".\Data\%$OFFERING_YEAR%-Spring-Offerings-Parsed.txt" DEL /F /Q ".\Data\%$OFFERING_YEAR%-Spring-Offerings-Parsed.txt"
 FOR /F "tokens=1 delims=" %%P IN (.\Data\index\%$OFFERING_YEAR%-Spring-ID-Index.txt) DO (
-xml sel -T -t -m offerings/offering[@id='%%P'] -v "concat(@id, '|', title)" -o "|" -if "oars_offerings/oars_offering" -v oars_offerings/oars_offering/@code -n --else -o "" -n .\Data\adminweb_Offering_export.xml >> .\Data\%$OFFERING_YEAR%-Spring-Offerings-Parsed.txt)
+xml sel -T -t -m offerings/offering[@id='%%P'] -v "concat(@id, '|', title)" -o "|" -if "oars_offerings/oars_offering" -v oars_offerings/oars_offering/@code -n --else -o "" -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE% >> .\Data\%$OFFERING_YEAR%-Spring-Offerings-Parsed.txt)
 
 :: Summer
-IF EXIST "%$OFFERING_YEAR%-Summer-Offerings-Parsed.txt" DEL /F /Q "%$OFFERING_YEAR%-Summer-Offerings-Parsed.txt"
+IF EXIST ".\Data\%$OFFERING_YEAR%-Summer-Offerings-Parsed.txt" DEL /F /Q ".\Data\%$OFFERING_YEAR%-Summer-Offerings-Parsed.txt"
 FOR /F "tokens=1 delims=" %%P IN (.\Data\index\%$OFFERING_YEAR%-Summer-ID-Index.txt) DO (
-xml sel -T -t -m offerings/offering[@id='%%P'] -v "concat(@id, '|', title)" -o "|" -if "oars_offerings/oars_offering" -v oars_offerings/oars_offering/@code -n --else -o "" -n .\Data\adminweb_Offering_export.xml >> .\Data\%$OFFERING_YEAR%-Summer-Offerings-Parsed.txt)
+xml sel -T -t -m offerings/offering[@id='%%P'] -v "concat(@id, '|', title)" -o "|" -if "oars_offerings/oars_offering" -v oars_offerings/oars_offering/@code -n --else -o "" -n .\Data\%$ADMINWEB_OFFERINGS_EXPORT_FILE% >> .\Data\%$OFFERING_YEAR%-Summer-Offerings-Parsed.txt)
+:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+
 
 :: Format import file
 :: replace "|" with TAB

@@ -1,5 +1,5 @@
-# Banner Offering Feed
-`wget --no-check-certificate "https://adminweb.evergreen.edu/banner/public/offerings/export" --output-document=H:\adminweb_Offering_export.xml`
+# The Evergreen State College Banner Offering Feed
+`wget --no-check-certificate "https://adminweb.evergreen.edu/banner/public/offerings/export" --output-document=.\Data\adminweb_Offering_export.xml`
 
 # Validating XML file
 xml val -e adminweb_Offering_export.xml
@@ -67,6 +67,10 @@ xml sel -t -f -o " " -v "count(//node())" adminweb_Offering_export.xml
 
 ## Count for a specific element or attribute
 xml sel -t -f -o " " -v "count(offerings/offering/faculties/faculty/@user_name)" adminweb_Offering_export.xml
+xml sel -t -v "count(offerings/offering[@id='41926']/faculties/faculty/@display_name)" .\Data\adminweb_Offering_export.xml
+
+
+
 
 # Show  XSLT format with "-C" switch
 xml.exe sel -C -t -v "count(/offerings/offering/title)" adminweb_Offering_export.xml
@@ -178,6 +182,12 @@ xml sel -t -m //offering[@status='Confirmed'] -v "concat(@id, '|' ,@offering_typ
 
 ## Subset a node
 xml sel -t -m //offering[2] -s A:T:U @liaison_area -v "concat(@liaison_area, '|', @id, '|', title)" -n adminweb_Offering_export.xml
+### Subset for attribute
+xml sel -t -m offerings/offering[@id='41926'] -v @id -o "|" -m faculties/faculty[1] -v @display_name  .\Data\adminweb_Offering_export.xml
+xml sel -t -m offerings/offering[@id='41926'] -v @id -o "|" -m faculties/faculty[2] -v @display_name  .\Data\adminweb_Offering_export.xml
+### Return all attribute values when multiple
+xml sel -t -m offerings/offering[@id='41926'] -v @id -o "|" -m faculties/faculty[(.)] -v @display_name .\Data\adminweb_Offering_export.xml
+
 
 ### All of the confirmed offerings with Program code
 xml sel -t -c //offering[@status='Confirmed'] -m //offering/oars_offerings/oars_offering -v @code -n .\Data\adminweb_Offering_export.xml
