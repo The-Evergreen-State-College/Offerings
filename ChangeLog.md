@@ -18,6 +18,20 @@
 
 ---
 
+## Version 0.3.0 Build: 2023-10-18
+### Added
+- src folder for commandlet
+- compare xml feed files
+- rename previous xml feed file to old
+- ./data/xml
+
+### Changed
+- folders to lowercase
+- offerings by liaison to offerings by area
+
+---
+
+
 ## Version 0.2.0 Build: 2023-10-12
 ### Added
 - xml file as variable
@@ -27,8 +41,6 @@
 ### Changed
 - wget parameters
 - filters for parsed quarters
-
----
 
 
 ## Version 0.1.0 Build: 2023-10-10
