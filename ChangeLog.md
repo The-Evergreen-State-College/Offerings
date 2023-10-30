@@ -18,6 +18,22 @@
 
 ---
 
+## Version 0.4.0 Build: 2023-10-30
+### Added
+- comments
+- Debug mode
+- xml validation check
+- count of offerings
+- logging
+- faculty to subset
+
+### Changed
+- some timeouts to 5 sec
+- name of parsed to Subset-Science
+
+---
+
+
 ## Version 0.3.0 Build: 2023-10-18
 ### Added
 - src folder for commandlet
@@ -28,8 +44,6 @@
 ### Changed
 - folders to lowercase
 - offerings by liaison to offerings by area
-
----
 
 
 ## Version 0.2.0 Build: 2023-10-12
