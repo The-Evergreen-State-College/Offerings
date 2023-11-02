@@ -18,6 +18,13 @@
 
 ---
 
+## Version 0.5.0 Build: 2023-11-02
+### Added
+- quarters to Offerings by Liaison area
+
+---
+
+
 ## Version 0.4.0 Build: 2023-10-30
 ### Added
 - comments
@@ -30,8 +37,6 @@
 ### Changed
 - some timeouts to 5 sec
 - name of parsed to Subset-Science
-
----
 
 
 ## Version 0.3.0 Build: 2023-10-18

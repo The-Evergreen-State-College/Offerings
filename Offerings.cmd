@@ -35,8 +35,8 @@
 @Echo Off
 @SETLOCAL enableextensions
 SET $PROGRAM_NAME=Offerings-Parsing-Tool
-SET $Version=0.4.0
-SET $BUILD=2023-10-30 1300
+SET $Version=0.5.0
+SET $BUILD=2023-10-30 1400
 Title %$PROGRAM_NAME%
 Prompt OPT$G
 color 8F
@@ -282,7 +282,7 @@ xml sel -t -m //offering[@status='Confirmed'] -s A:T:U title --if "terms/term[@c
 xml sel -t -m //offering[@status='Confirmed'] -s A:T:U title --if "terms/term[@code='%$OFFERING_YEAR%40']" -v "concat(title, '|', @offering_type, '|', @curr_area, '|', @liaison_area, '|', faculties/faculty[1]/@display_name, ';', faculties/faculty[2]/@display_name, ';', faculties/faculty[3]/@display_name)" -n .\Data\xml\%$ADMINWEB_OFFERINGS_EXPORT_FILE%> .\Data\%$OFFERING_YEAR%-Offerings-Summer-Confirmed-Listing.txt
 
 :: Get Offerings by Liaison_area
-xml sel -t -m //offering[@status='Confirmed'] -s A:T:U @curr_area -s A:T:U @liaison_area -v "concat(@curr_area, '|', @liaison_area, '|', @id, '|', title, '|', @year)" -n .\Data\xml\%$ADMINWEB_OFFERINGS_EXPORT_FILE% > .\Data\%$OFFERING_YEAR%-Complete-Offerings_by_area.txt
+xml sel -t -m //offering[@status='Confirmed'] -s A:T:U @curr_area -s A:T:U @liaison_area -v "concat(@curr_area, '|', @liaison_area, '|', @id, '|', title, '|', @year, '|', terms/term/@season)" -n .\Data\xml\%$ADMINWEB_OFFERINGS_EXPORT_FILE% > .\Data\%$OFFERING_YEAR%-Complete-Offerings_by_area.txt
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 :: Get Offerings that are Confirmed build index
@@ -311,7 +311,7 @@ xml sel -T -t -m //offering[@status='Confirmed'][@liaison_area!='TAC'][@liaison_
 xml sel -T -t -m //offering[@status='Confirmed'][@liaison_area!='TAC'][@liaison_area!='CON'][@liaison_area!='CTL'][@liaison_area!='EA'][@liaison_area!='MIT'][@liaison_area!='MPA'][@liaison_area!='CCP'][@liaison_area!='NP'][@offering_type!='Research'] --if "terms/term[@code='%$OFFERING_YEAR%40']" -v @id -n .\Data\xml\%$ADMINWEB_OFFERINGS_EXPORT_FILE% > ".\Data\index\%$OFFERING_YEAR%-Summer-ID-Index.txt"
 :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-:: Using Quarter index on Id's, parse xml for offerings by Quarter 
+:: Using Quarter index on Id's, parse xml for offerings by Quarter and subset for Science offerings
 :: Fall
 IF EXIST ".\Data\%$OFFERING_YEAR%-Fall-Offerings-Parsed.txt" DEL /F /Q ".\Data\%$OFFERING_YEAR%-Fall-Offerings-Parsed.txt"
 FOR /F "tokens=1 delims=" %%P IN (.\Data\index\%$OFFERING_YEAR%-Fall-ID-Index.txt) DO (
