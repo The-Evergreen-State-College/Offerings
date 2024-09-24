@@ -18,11 +18,16 @@
 
 ---
 
+## Version 0.6.0 Build: 2024-09-24
+### Fixed
+- Account for how academic year is treated in code; i.e. Fall 2024 is Fall 2025 
+
+---
+
+
 ## Version 0.5.0 Build: 2023-11-02
 ### Added
 - quarters to Offerings by Liaison area
-
----
 
 
 ## Version 0.4.0 Build: 2023-10-30

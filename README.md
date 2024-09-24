@@ -7,7 +7,7 @@ This project came about due to Lab Management Software (LMS) migration for the [
 
 The XML Offerings feed needs to be parsed (and filtered), and I chose to use [XMLSTARTLET](https://xmlstar.sourceforge.net/) for that since the Offerings tool is written for Windows Command shell. The documentation for XMLStartlet is sparse and it took much digging + trial and error to get things working. This is to say that this project would be helpful for learning XMLStartlet. I've tried to document most of the work in my [XMLStartlet notes](docs/XMLStartlet_Notes.md).
 
-## Installation
+## :building_construction: Installation
 
 Download the latest version from GitHub [Release](https://github.com/The-Evergreen-State-College/Offerings/releases); this will provide an archive compressed ``.zip`` file that can be extracted to a directory of your choosing -- hopefully you are following [Filesystem Hierarchy Standard](https://en.wikipedia.org/wiki/Filesystem_Hierarchy_Standard), and just like *NIX, Windows has a [Directory structure Standard](https://en.wikipedia.org/wiki/Directory_structure) as well. Once extracted, lets say to ``%SYSTEMDRIVE%\Users\Public\Tools`` the path wil then be: ``C:\Users\Public\Tools\Offerings-0.0.0\Offerings-0.0.0``; I recommend moving the contents to the top folder: ``C:\Users\Public\Tools\Offerings-0.4.0`` 
 To run the program, run ``Offerings.cmd``. _I haven't figured out yet how to path the release, so that it's not redundant._
